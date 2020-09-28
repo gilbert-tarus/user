@@ -1,0 +1,505 @@
+---
+title: "Intro to ML"
+author: "GILBERT TARUS"
+about: "I am pursuing BSc. Applied Statistics With Computing in the University of ELdoret. I am still learning R. Whatever I am presenting here is subject to correction."
+other skills: "C++, SQL, Introduction to python,MS Office . . . "
+date: "30/04/2020"
+output: html_document
+---
+
+```{r}
+for (i in 1) {
+  print(paste("Hey Hi Statisticians",i))
+}
+```
+
+:) this happened at a time I was giving advise to my close friend.!!!I was in her shoes at that moment
+Introduction to ML
+
+IN THIS PART . . .
+1. Create machine learning analyses with the rattle package
+2. Build decision trees and random forests
+3. Put support vector machines to work
+4. Use k-means clustering
+5. Build neural networks
+
+CHAPTER 6: TOOLS AND DATA FOR ML PROJECST
+IN THIS CHAPTER
+  - Types of machine learning
+  - Working with the UCI Machine
+  - Learning repository
+  - Understanding the iris dataset
+  - Introducing the rattle package
+  - Using rattle with the iris dataset
+INTRODUCTION:
+  -ML is the application of AI to statistics and statistical Analysis.
+  - ML techniques automate the search for petterns in data. Sometimes the objective is to:
+    * to figure out he rule for classifying individuals based on their characteristics
+    * prediction. Learn inputs and associate outpus e.g from the past weather condition, will it rain tommorow or a particular day?
+  - SUPERVISED LEARNING is learning a fxn or a rule that links the inputs with outputs.
+  - CLASSIFICATION problem is when outputs are categories. If outputs is continuos it is REGRESSION.
+  - Disscovering the structure in a set of inputs is called UNSUPERVISED LEARNING.
+  - In any event, ML technique does its work without being explicitly programmed.It changes its behaviour on the basis of experience, with the goal of becoming increasingly accurate.
+
+The UCI (University of California-Irvine) ML Repository
+  This is where we'll find data sets for our projects.
+---
+Link: http://archive.ics.uci.edu/ml/index.php
+---
+First, we may use Iris data set to identify species basing on the characteristics: sepal and petal width and length.
+
+getting the iris data set from UCI
+```{r }
+iris.uci <- read.csv("C:\\Users\\user\\Desktop\\Data Science\\iris.data",header=FALSE, col.names = c("sepal.length","sepal.width","petal.length","petal.width","species"))
+#When theres an access to the internet.
+```
+You can use the iris data set in the datasets package as well.
+Data Cleaning
+```{r}
+#Here are the first 6 rows
+head(iris.uci)
+```
+the overview of the data
+```{r}
+#This is exploring data
+summary(iris.uci)
+```
+Correcting errors
+
+On the Data Set Description web page under Relevant Information, this message appears (after some other stuff):
+
+The 35th sample should be: 4.9,3.1,1.5,0.2,"Iris-setosa" where the error is in the fourth feature.
+The 38th sample: 4.9,3.6,1.4,0.1,"Iris-setosa" where the errors are in the second and third features.
+```{r}
+#The 35Th and 38th sample from the current data
+iris.uci[c(35,38),]
+```
+for obs 35, we'll have to change the petal.width and for the 38th obs, we'll have to change the sepal.width and the petal length. To do this:
+```{r}
+iris.uci[35,4]=0.2
+#It becomes;
+iris.uci[35,]
+```
+and for 38th;
+```{r}
+iris.uci[38,2:3]=c(3.6,1.4)
+#It becomes
+iris.uci[c(35,38),]
+```
+Now, the species attribute, remove the iris-(the prefix in each species), to do this, we use mapvalues() from plyr pkg
+```{r}
+library(plyr)
+iris.uci$species<-mapvalues(iris.uci$species,from = c("Iris-setosa","Iris-versicolor","Iris-virginica"),to=c("setosa","versicolor","virginica"))
+
+head(iris.uci)
+```
+Exploring the data
+```{r}
+summary(iris.uci)
+```
+Here we can see range(Max-Min), measures of central tendancies(mean and median). These provides information of the distributions.
+To visualize and compare the distribution of variables we have to do some ploting: histograms together
+```{r}
+par(mfrow=c(2,2))#mfrow('multiple figures per row')
+for(i in 1:4){hist(iris.uci[,i],xlab=colnames(iris.uci[i]), cex.lab=1.2,main="")}
+
+```
+Trying out the density plot
+
+```{r}
+par(mfrow=c(2,2))
+for (i in 1:4) {hist(iris.uci[,i],xlab = colnames(iris.uci[i]),cex.lab=1.2,main = paste(" Density plot of ",colnames(iris.uci[i])),probability = TRUE)
+  lines(density(iris.uci[,i]))
+  }
+```
+Exploring the relationship in the data 
+
+Base R graphics
+----------------
+A scatter plot matrix visualizes the intervariable relationships in the data apart from the summary statistics and hist()
+To plot a sctter plot with lower panel removed and a legend in that area is as follows
+Scatterplot Matrix with  legend
+```{r}
+
+{pairs(iris.uci,lower.panel = NULL,cex=2,cex.labels = 2,pch=21,bg=c("brown","blue","green")[iris.uci$species])
+  par(xpd=NA)#Adding a region in the center of the matrix("clipping region)
+  legend("bottomleft",inset = c(0,0),legend = levels(iris.uci$species),pch =21,pt.bg=c("brown","blue","green"),pt.cex = 2,y.intersp = 1,cex = 2,bty ="n")
+}
+```
+The scatter plot above shows that setosas(in brown) are separaate and distributed differntly than the other two species.
+- The least amount of overlap in versicolar and virginica appears to be petal.width versus petal.legth. 
+- Also in col 5, the petal.length and petsl.width seem to have at least amount of overlap across the species.i.e the range of one species has less extension into the range of another.
+- All these suggests that petal.length/petal.width might provide a strong basis for a process that has to learn how to assign irises to their proper species.
+
+
+_______________________________________________________
+___More On clipping ___
+
+```{r}
+par(mfrow=c(2,2))
+for (i in 1:4) {hist(iris.uci[,i],xlab = colnames(iris.uci[i]),cex.lab=1.2,main = paste(" Density plot of ",colnames(iris.uci[i])),probability = TRUE)
+  par(xpd=NA)
+  lines(density(iris.uci[,i]))
+}
+
+```
+```{r}
+par(mfrow=c(2,2))
+for (i in 1:4) {hist(iris.uci[,i],xlab = colnames(iris.uci[i]),cex.lab=1.2,main = paste(" Density plot of ",colnames(iris.uci[i])),probability = TRUE)
+  par(xpd=FALSE)
+  lines(density(iris.uci[,i]))
+}
+
+```
+```{r}
+par(mfrow=c(2,2))
+for (i in 1:4) {hist(iris.uci[,i],xlab = colnames(iris.uci[i]),cex.lab=1.2,main = paste(" Density plot of ",colnames(iris.uci[i])),probability = TRUE)
+  par(xpd=TRUE)
+  lines(density(iris.uci[,i]))
+}
+
+```
+
+*WOrking With ggplot2*
+```{r}
+
+
+
+mydata<-read.csv("C:\\Users\\user\\Desktop\\R Work\\train_revised.csv")
+View(mydata)
+
+library(ggplot2)
+library(GGally)
+
+ggpairs(iris.uci,aes(color=species))
+```
+The THREE Shades of grey
+```{r}
+
+plot.matrix<-ggpairs(iris.uci,aes(color=species))
+for (i in 1:5) {
+  for (j in 1:5) {
+    plot.matrix[i,j]<-plot.matrix[i,j]+
+      scale_color_grey()+
+      scale_fill_grey()
+  }
+}
+plot.matrix
+
+```
+
+Introducing the rattle package
+```{r}
+library(rattle)
+library(RGtk2)
+```
+___rattle()___
+The main panel presents a welcome message and some info about Rattle. The
+menu bar at the top features:
+  - Project (for starting, opening, and saving Rattle projects)
+  - Tools (a menu of choices that correspond to buttons and tabs)
+  - Settings (that deal with graphics), and 
+  - Help
+The row below the menu bar holds icons;
+  - Execute- the idea is to look at each tab and make selections, and then click Execute to carry
+out those selections. (If you’re a Trekkie, think of clicking the Execute icon as Captain Picard saying “Make it so!”)
+
+*The next row holds the tabs. 
+  - Data. This tab presents the welcome message and, more importantly, allows you to choose the data source.
+  - Explore tab is for — you guessed it — exploring data.
+  - Test tab supplies two-sample statistical tests. If you have.
+  - Transform tab ;to transform data.
+  - Cluster tab enables several kinds of cluster analysis, a type of unsupervised learning. 
+  - Associate tab sets you up with association analysis, which identifies relationships between variables. 
+  - Model tab provides several kinds of ML, including decision trees, support vector machines, and neural networks.
+  - Evaluate tab;allows you to  your ML creation.
+  - Log tab tracks your interactions with Rattle as R script, which can be quite instructive if you’re trying to learn R.
+  
+* Remember that Rattle is a GUI to R functions for some complex analyses, and you can’t always know in advance what those functions are or which packages they live in. Accordingly, a frequent part of the interaction with Rattle is a dialog box that opens and says that you have to install a particular package, and asks whether
+you want to install it. Always click Yes.'
+
+$$Using Rattle with iris$$
+
+```{r}
+
+```
+
+__Decisions,Decisions,Decisions__
+A decision tree is a graphical way of representing knowledge.
+  It is a way to structure a sequence of questions and possible answers.
+  It is used to show the flow of decision-making to nontechnical audience.
+  
+  COMPONENTS OF DECISION TREE.
+    1. Nodes- rep a question(e.g petal.length<2.6 and the question mark is implicit)
+    2. Branches- emanate from the node. rep possible answers(e.g yes/no)
+    
+  ___ROOTS AND LEAVES___
+  -The tree starts from top level node (root) and ends in bottom-level node(leaves)
+  A node thst branches to a node below it is the parent of the one below. The lower node on a branch is the child of the one above it.
+  - Root has no parents and a leaf has no children.
+  - An internal node has at least one child
+  - A sequence of branches from the root to a leaf is like a classification rule.
+  - a decision tree with categories in the leaves is called a classification tree.
+  - a decision tree with numerical values in the leaves is called a regression tree.
+  
+  ___TREE CONSTRUCTION___
+  - In effect, the job is to create a series of yes/no questions that split the data into smaller and smaller subsets until you can’t split the subsets any more.This is called recursive partitioning.
+  
+  ___DECISISON TREES IN R___
+  - R has a package that uses recursive partitioning to construct decision trees. It’s called rpart, and its function for constructing trees is called rpart().
+  
+  ___GROWING TREE IN R___
+```{r}
+library(rpart)
+#Create decision tree for iris.icu data frame
+iris.tree<-rpart(species~sepal.length+sepal.width+petal.length+petal.width,iris.uci,method = "class")# the class indicates that the tree is a classification tree. For regression, method="anova". we can abbr. the formular to species~.
+iris.tree
+
+```
+____ Decision tree in Rattle
+```{r}
+library(rattle)
+rattle()
+```
+
+__PROJECT: A MORE COMPLEX NDEECISION TREE__
+
+```{r}
+car.uci<-read.csv("C:\\Users\\user\\Desktop\\Data Science\\car.data",header=FALSE,col.names=c("buying","maintenance","doors","persons","lug_boot","safety","evaluation"))
+
+head(car.uci)
+
+```
+ The attributes and their values are
+  »» ___buying (the purchase price):___ v-high, high, med, low
+  »» _maint (the cost of maintaining the car):___ v-high, high, med, low
+  »» __doors:__ 2, 3, 4, more
+  »» ___persons:___ 2, 4, more
+  »» ___lug_boot (size of the trunk):___ small, med, big
+  »» ___safety (estimated safety of the car):___ low, med, high
+This data refers the target as a class. But evaluation is much better
+___Using rattle___
+```{r}
+library(rattle)
+rattle()
+```
+Data Exploration
+  From the data, the bar chart for evaluation shows that the vast majority of cars are unacceptable.
+
+Building and drawing tree.___
+
+```{r}
+library(rpart)
+
+car.tree<-rpart(evaluation~buying+maintenance+doors+persons+lug_boot+safety,method = "class",car.uci)
+car.tree
+prp(car.tree,cex = 1,varlen = 0,branch = 0,colours(distinct = FALSE))
+
+```
+$%$Data Exploration$%$
+
+From the data, the bar chart for evaluation shows that the vast majority of cars are unacceptable.
+___Building and drawing tree.___
+```{r}
+library(rpart)
+library(rpart.plot)
+
+car.tree<-rpart(evaluation~buying+maintenance+doors+persons+lug_boot+safety,method = "class",car.uci)
+car.tree
+prp(car.tree,cex = .5,varlen = 0,branch = 1,nn=TRUE,yesno = 2)
+```
+
+Evaluating the tree
+```{r}
+library(rattle)
+rattle()
+
+library(rpart.plot)
+prp(crs$rpart, cex=1,varlen=0,branch=0,cp=.00)
+
+```
+$$Suggested ~~~~Project: Titanic$$
+```{r}
+library(gapminder)
+gap.df<-gapminder
+View(head(gap.df))
+rattle()
+```
+$$Project ~~~:Titanic$$
+$$Importing ~~the~~ data$$
+```{r}
+library(rattle)
+library(titanic)
+head(titanic_gender_class_model)
+head(titanic_gender_model)
+head(titanic_test)
+View(titanic_train)
+View(titanic_test)
+View(names(titanic_test))
+View(names(titanic_train))
+titanic.df<-titanic_train
+```
+$$Exploring~~the~~data$$
+```{r}
+summary(titanic.df)
+library(tidyverse)
+View(titanic.df)
+glimpse(titanic.df)
+cont.titanic<-titanic.df%>%
+  select_if(is.numeric)
+view(head(cont.titanic))
+
+cat.titanic<-titanic.df%>%
+  select_if(is.character)
+view(head(cat.titanic))
+View(sapply(titanic.df,class))
+
+length(cont.titanic)
+```
+```{r}
+my.col<-c("red","green","blue","brown","olive","pink","yellow")
+
+par(mfrow=c(2,2))
+for (i in 1:7) {hist(cont.titanic[,i],xlab = colnames(cont.titanic[i]),col=my.col[i])}
+
+```
+$$Decicision~~tree~~for~~the~~titanic~~data~~set$$
+```{r}
+rattle()
+```
+$$Into~~the~~forest;~~Randomly$$
+  Random forest — a collection of decision trees that you can poll, and the majority vote is the decision.
+  $$So, ~here ~are ~two~ things~ to~ consider~ each~ time~ I~ grow~ a ~tree~ in~ the~ forest~:(growwing~~many ~~ trees)$$
+  »»For the data, I randomly select from the rows of the training set.
+  »»For each split, I randomly select from the columns. (How many columns do I randomly select each time? A good rule of thumb is the square root of the
+number of columns.)
+That’s a huge forest, with a lot of randomness! A technique like this one is useful when you have a lot of variables and relatively few observations (lots of columns and not so many rows, in other words).
+
+$$\\^R~~_A~~^N~~_D~~^O~~_M~~^g~~\\FORESTS\\~~IN~~\R$$
+
+$$\\~~^\\G\\~~_I~~^L~~_B~~^E~~_R~~^T\\$$
+
+BUILDING THE FOREST
+  
+```{r}
+#FIRST WE HAVE TO SEED THE DATA-THAT STARTS OF THE RANDOMIZATION IN SAMPLE()
+set.seed(810)
+library(randomForest)
+```
+Sampling
+```{r}
+training.set=sample(nrow(iris.uci),0.7*nrow(iris.uci))
+  
+```
+The first argument of sample() is the number of rows in the data frame; the second argument is how many of the rows to randomly sample.
+  You can use sample() with or without replacement i.e replacement=TRUE
+  
+  USING RANDOM FOREST
+```{r}
+attach(iris.uci)
+library(randomForest)
+iris.forest<-randomForest(formula=species~sepal.length+sepal.width+petal.length+petal.width,data = iris.uci,ntree=500,subset = training.set,importance=TRUE,mtry=1)
+```
+  ARGUMENTS IN THE randomforest():
+  1. Formula indicating that species depends on the other four variables.
+  2. Data frame, and
+  3. Number of trees to create.
+  4. The next-to-last one is the subset of the data for creating each tree. And the last argument, 
+  5. Importance, tells the function that you want to examine the importance of each variable in creating the forest.
+  However, there are more arguments to the randomforest().
+  
+  EVALUATING THE FOREST
+```{r}
+print(iris.forest)
+```
+  - the default number of variables tried at each split: 2 is the square root of the number of independent variables.You can vary this by setting a value for a randomForest() argument called mtry (for example, mtry = 3).
+  - the confusion matrix shows the actual species of each iris (in the rows) and the species as identified by the forest (in the columns). The numbers of correct identifications are in the main diagonal, and errors are in the
+off-diagonal cells. The forest mistakenly identified 2 versicolor as virginica and 3 virginica as versicolor. The error rate is 4.76 percent. This is the off-diagonal total
+(3 + 2 = 7) divided by the total number of observations (37 + 32 + 31 + 3 + 2 = 105,
+and the 105 is 70 percent of 150). So the forest is accurate 95.2381 percent of the time — which is pretty good!
+  -OOB stands for out of bag. A bag is the part of the training set that went into creating the decision tree.The OOB estimate, then, is based on testing the forest on data not included in the bag.
+  
+    A CLOSER LOOK
+```{r}
+sapply(iris.forest,class)
+
+```
+Some, like ntree, are short and sweet and identify inputs to randomForest(). Others provide a huge amount of information: err.rate, for example, shows the error rates for every tree in the forest. Still others, for this example, are NULL.
+
+Examining the Attribute: importance
+```{r}
+round(iris.forest$importance,2)
+```
+  -the first three columns show the relative importance of each variable for identifying each species.
+  - relative importance means how much each variable contributes to accuracy for identifying a species.
+  - MeanDecreaseAccuracy is based on rearranging the values of a variable and seeing how the rearrangement affects performance. If the variable is not important, rearranging its values does not decrease the forest’s accuracy. If it is important, the accuracy does decrease — hence the name, MeanDecreaseAccuracy.
+Again, the two petal variables are the most important.
+- MeanDecreaseGini represent the reduction in the gini (that is, in the misclassification) by using the row variable in a split; randomForest() measures this for each variable over all the trees in the forest, resulting in the numbers in the fifth column. Once again, the petal variables are the most important: Using them in splits (as variables in a tree, in other words) provides the largest decreases in misclassification.
+  All these are as a result of specifying the importance arg=TRUE
+  
+  Plotting Error
+```{r}
+{plot(iris.forest,col = "black",main = "Iris Random Forest",xlim=c(1,100))
+#Adding the legend
+legend("topright",legend = c(levels(iris.uci$species),"OOB"),cex = .8,title = "Key",lty = c("dashed","dotted","dotdash","solid"),bty = "n")
+}
+```
+
+  Plotting the Importance
+```{r}
+library(ggplot2)
+library(rattle)
+ggVarImp(iris.forest)
+```
+___Looking at the rules___
+```{r}
+printRandomForests(iris.forest,models = c(1:500))
+```
+$$Identifying~~the~~Glass~~:)$$
+```{r}
+glass.uci<-read.csv("C:\\Users\\user\\Desktop\\Data Science\\glass.data")
+View(glass.uci)
+colnames(glass.uci)<-c("ID","RI","Na","Mg","Al","Si","K","Ca","Ba","Fe","Type")
+#Changing the levels from Numeric to String values
+library(plyr)
+glass.uci$Type<-mapvalues(glass.uci$Type,from = c(1,2,3,5,6,7),to = c("bldg_windows_float","bldg_windows_non_float","vehicle_windows_float","containers","tableware","headlamps"))
+View(glass.uci)
+
+library(rattle)
+rattle()
+```
+Exploring the data
+```{r}
+summary(glass.uci)
+View(sapply(glass.uci,class))
+```
+
+```{r}
+#FIRST WE HAVE TO SEED THE DATA-THAT STARTS OF THE RANDOMIZATION IN SAMPLE()
+set.seed(200)
+glass.training.set<-sample(nrow(glass.uci),0.7*nrow(glass.uci))
+View(glass.training.set)
+#Growing the Trees
+
+
+```
+Evaluating the trees
+```{r}
+print(glass.forest)
+```
+
+$$Project~:~~finding~~mushrooms$$
+```{r}
+mushroom.uci<-read.csv(file.choose(),header = FALSE)
+mushroom.names<-read.csv(file.choose(),header = FALSE)
+View(mushroom.uci)
+View(mushroom.names)
+
+rattle()
+```
+
+
+
+
+
+
